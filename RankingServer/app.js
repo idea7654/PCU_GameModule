@@ -10,7 +10,10 @@ const options = {
   cert: fs.readFileSync("./cert.pem"),
 };
 
-let rankings = [{ gameName: "test", data: [] }];
+//let rankings = [{ gameName: "test", data: [] }];
+
+//const dbJson = fs.readFileSync("db.json");
+//const rankings = JSON.parse(dbJson);
 
 app.use(
   cors({
@@ -20,37 +23,56 @@ app.use(
 );
 app.use(bodyParser.json());
 
-app.get("/", (req, res) => {
-  console.log("응답있음");
-  res.send("test");
+app.get("/:id", (req, res) => {
+  const dbJson = fs.readFileSync("db.json");
+  const rankings = JSON.parse(dbJson);
+  const index = rankings.AllInfo.findIndex(
+    (i) => i.gameName == req.query.gameName
+  );
+  if (index != -1) {
+    res.json(rankings.AllInfo[index]);
+  } else {
+    res.send("Invalid Game");
+  }
 });
 
-app.post("/", (req, res) => {
-  console.log(req.body);
+app.post("/", async (req, res) => {
+  const dbJson = fs.readFileSync("db.json");
+  const rankings = JSON.parse(dbJson);
   if (req.body.gameName && req.body.userName && req.body.score) {
-    //res.send("하위");
-    const index = rankings.findIndex((i) => i.gameName == req.body.gameName);
+    const index = rankings.AllInfo.findIndex(
+      (i) => i.gameName == req.body.gameName
+    );
     if (index != -1) {
-      const userIndex = rankings[index].data.findIndex(
+      const userIndex = rankings.AllInfo[index].data.findIndex(
         (i) => i.userName == req.body.userName
       );
       if (userIndex == -1) {
-        rankings[index].data.push({
+        await rankings.AllInfo[index].data.push({
           userName: req.body.userName,
           score: req.body.score,
+          rank: 0,
         });
       } else {
-        rankings[index].data[userIndex].score = req.body.score;
+        rankings.AllInfo[index].data[userIndex].score = req.body.score;
       }
-      //res.status(200).json(rankings[index]);
-      res.json(rankings[index]);
+      await rankings.AllInfo[index].data.sort((a, b) => {
+        return a.score > b.score ? -1 : a.score < b.score ? 1 : 0;
+      });
+
+      await rankings.AllInfo[index].data.forEach((i, index) => {
+        i.rank = index + 1;
+      });
+      await res.json(rankings.AllInfo[index]);
     } else {
       res.send("Invalid Game");
     }
   } else {
     res.send("Invalid Data Type");
   }
+  const dbToJson = JSON.stringify(rankings);
+  fs.writeFileSync("db.json", dbToJson);
 });
 
 https.createServer(options, app).listen(8600);
-// app.listen(8600);
+//app.listen(8600);

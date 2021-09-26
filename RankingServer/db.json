@@ -1,0 +1,11 @@
+{
+  "AllInfo": [
+    {
+      "gameName": "test",
+      "data": [
+        { "userName": "edea", "score": 80, "rank": 1 },
+        { "userName": "7654", "score": 60, "rank": 2 }
+      ]
+    }
+  ]
+}
