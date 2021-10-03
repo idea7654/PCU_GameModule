@@ -48,6 +48,14 @@ let tServer = net.createServer(function (client) {
     };
 
     client.write(Buffer.from(JSON.stringify(jsonData)));
+
+    const newData = {
+      Message: "SessionQuit",
+      nickname: "test",
+    };
+    setTimeout(() => {
+      client.write(Buffer.from(JSON.stringify(newData)));
+    }, 3000);
   });
 
   client.on("end", function () {

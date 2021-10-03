@@ -64,12 +64,12 @@ namespace UnityNetworkLib
         private string url;
         private WebClient wb;
 
+        #region TCP_SET
         private int port = 8605;
         private Socket socket;
         private IPAddress serverIP;
         private IPEndPoint serverInfo;
 
-        #region TCP_SET
         private bool useTCP = false;
         private byte[] recvByte = new byte[1024];
         private Thread TcpThread;
@@ -97,8 +97,15 @@ namespace UnityNetworkLib
             public string nickname;
         }
 
+        public class UserInfoSend
+        {
+            public string gameName;
+            public string nickname;
+            public string userInfo;
+        }
 
-        LoginLib(bool useSession)
+
+        public LoginLib(bool useSession)
         {
             if (useSession)
             {
@@ -110,6 +117,7 @@ namespace UnityNetworkLib
                 {
                     socket.Connect(serverInfo);
                     TcpThread = new Thread(RecvThread);
+                    TcpThread.Start();
                 }
                 catch (SocketException ex)
                 {
@@ -146,7 +154,8 @@ namespace UnityNetworkLib
             if (useTCP)
             {
                 byte[] buff = Encoding.UTF8.GetBytes(dataString);
-                socket.Send(buff, SocketFlags.None);
+                int result = socket.Send(buff, SocketFlags.None);
+                Console.WriteLine(result);
                 loginEvent.WaitOne();
                 RecvPacket packet;
                 lock (buffer_lock)
@@ -165,13 +174,51 @@ namespace UnityNetworkLib
             }
         }
 
+        public bool SetUserInfo(string gameName, string nickname, string userInfo/*Json*/)
+        {
+            //Set UserInfo from HTTP
+            //Custom UserInfo Struct or class..
+            UserInfoSend sendInfo = new UserInfoSend();
+            sendInfo.gameName = gameName;
+            sendInfo.nickname = nickname;
+            sendInfo.userInfo = userInfo; // JsonData From UserCustom Struct or class object
+
+            var dataString = JsonConvert.SerializeObject(sendInfo);
+            string response = wb.UploadString(url + "info", "POST", dataString);
+            if (response == "true")
+                return true;
+            else
+                return false;
+            //response by bool
+        }
+
+        public void GetUserInfo(string gameName, string nickname)
+        {
+            //Get UserInfo by Another HTTP Request...
+            //Cause TCP Login!
+            //string response = wb.UploadString(url + "") Get요청으로 하자!
+
+        }
+
+        public void LogOut(string gameName, string nickname)
+        {
+            if (useTCP)
+            {
+
+            }
+            //TCP Logout For Session
+
+            //HTTP Logout
+        }
+
         public void RecvThread()
         {
             NetworkStream stream = new NetworkStream(socket);
             StreamReader reader = new StreamReader(stream);
+            Console.WriteLine("Thread Start!");
             while (true)
             {
-                int resLength = socket.Receive(recvByte);
+                int resLength = stream.Read(recvByte, 0, recvByte.Length);
                 if (resLength > 0)
                 {
                     string data = Encoding.UTF8.GetString(recvByte, 0, resLength);
@@ -188,6 +235,9 @@ namespace UnityNetworkLib
                     }
                     if (packet.Message == "SessionQuit")
                         SessionQuit(packet.nickname);
+
+                    if (packet.Message == "GetUserInfo")
+                        Console.WriteLine("Get User Info!"); // GetUserInfo by TCP
                 }
             }
         }
